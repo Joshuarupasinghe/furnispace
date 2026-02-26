@@ -15,12 +15,15 @@
     "@supabase/supabase-js": "^2.99.2",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "fabric": "^7.2.0",
     "lucide-react": "^0.577.0",
     "next": "16.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "three": "^0.183.2"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.183.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
