@@ -234,7 +234,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
             options={resolvedFloorOptions}
             value={config.floorTexture || "none"}
             onChange={(value) => setConfig({ ...config, floorTexture: value as FloorTextureType })}
-            size={52}
+            thumbSize={52}
           />
         </div>
 
@@ -269,7 +269,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
             options={resolvedWallOptions}
             value={config.wallMaterial || "color"}
             onChange={(value) => setConfig({ ...config, wallMaterial: value as WallMaterialType })}
-            size={52}
+            thumbSize={52}
           />
         </div>
 

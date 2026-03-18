@@ -607,7 +607,7 @@ export function AdminDesignerClient() {
                           options={sidebarFloorOptions}
                           value={roomConfig.floorTexture || "none"}
                           onChange={(val) => setRoomConfig({ ...roomConfig, floorTexture: val })}
-                          size={46}
+                          thumbSize={46}
                         />
                         {(roomConfig.floorTexture === "none" || !roomConfig.floorTexture) && (
                           <div className="flex gap-2 pt-1">
@@ -635,7 +635,7 @@ export function AdminDesignerClient() {
                           options={sidebarWallOptions}
                           value={roomConfig.wallMaterial || "color"}
                           onChange={(val) => setRoomConfig({ ...roomConfig, wallMaterial: val })}
-                          size={46}
+                          thumbSize={46}
                         />
                         {(roomConfig.wallMaterial === "color" || !roomConfig.wallMaterial) && (
                           <div className="flex gap-2 pt-1">

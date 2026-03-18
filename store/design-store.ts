@@ -81,7 +81,20 @@ export const useDesignStore = create<DesignState>((set, get) => ({
   },
   
   setRoomConfig: (config) => {
-    set({ roomConfig: config })
+    set((state) => {
+      if (state.currentDesign) {
+        const updatedDesign = {
+          ...state.currentDesign,
+          roomConfig: config,
+        }
+        return {
+          roomConfig: config,
+          currentDesign: updatedDesign,
+          hasUnsavedChanges: true,
+        }
+      }
+      return { roomConfig: config }
+    })
   },
   
   createNewDesign: (name) => {
@@ -208,8 +221,10 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     const { history, historyIndex } = get()
     if (historyIndex > 0) {
       const previousDesign = history[historyIndex - 1]
+      const parsedDesign = JSON.parse(JSON.stringify(previousDesign))
       set({
-        currentDesign: JSON.parse(JSON.stringify(previousDesign)),
+        currentDesign: parsedDesign,
+        roomConfig: parsedDesign.roomConfig,
         historyIndex: historyIndex - 1,
         hasUnsavedChanges: true,
       })
@@ -220,8 +235,10 @@ export const useDesignStore = create<DesignState>((set, get) => ({
     const { history, historyIndex } = get()
     if (historyIndex < history.length - 1) {
       const nextDesign = history[historyIndex + 1]
+      const parsedDesign = JSON.parse(JSON.stringify(nextDesign))
       set({
-        currentDesign: JSON.parse(JSON.stringify(nextDesign)),
+        currentDesign: parsedDesign,
+        roomConfig: parsedDesign.roomConfig,
         historyIndex: historyIndex + 1,
         hasUnsavedChanges: true,
       })
