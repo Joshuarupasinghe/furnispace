@@ -1,26 +1,145 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /** Base colors */
+    --clr-dark-a0: #1d2230;
+    --clr-light-a0: #f3f5fb;
+
+    /** Theme primary colors */
+    --clr-primary-a0: #28314a;
+    --clr-primary-a10: #3a4662;
+    --clr-primary-a20: #526080;
+    --clr-primary-a30: #6c7aa0;
+    --clr-primary-a40: #8b97bc;
+    --clr-primary-a50: #aeb8d6;
+
+    /** Theme surface colors */
+    --clr-surface-a0: #f3f5fb;
+    --clr-surface-a10: #eaedf6;
+    --clr-surface-a20: #dfe4f1;
+    --clr-surface-a30: #d1d8e8;
+    --clr-surface-a40: #bdc7db;
+    --clr-surface-a50: #a4afc6;
+
+    /** Theme tonal surface colors */
+    --clr-surface-tonal-a0: #edf1f9;
+    --clr-surface-tonal-a10: #dde4f2;
+    --clr-surface-tonal-a20: #c8d3e8;
+    --clr-surface-tonal-a30: #afbfd9;
+    --clr-surface-tonal-a40: #95a8c7;
+    --clr-surface-tonal-a50: #7d92b2;
+
+    /** Success colors */
+    --clr-success-a0: #2f7a53;
+    --clr-success-a10: #4aa975;
+    --clr-success-a20: #99d1b5;
+
+    /** Warning colors */
+    --clr-warning-a0: #ad8452;
+    --clr-warning-a10: #d0ad83;
+    --clr-warning-a20: #ead8c3;
+
+    /** Danger colors */
+    --clr-danger-a0: #b13d3a;
+    --clr-danger-a10: #d06b68;
+    --clr-danger-a20: #e9b9b7;
+
+    /** Info colors */
+    --clr-info-a0: #365f80;
+    --clr-info-a10: #4d7eab;
+    --clr-info-a20: #99b7d2;
+
+    /* Light mode defaults */
+    --background: 222 30% 96%;
+    --foreground: 227 22% 15%;
+    --card: 220 33% 98%;
+    --card-foreground: 227 22% 15%;
+    --popover: 220 33% 98%;
+    --popover-foreground: 227 22% 15%;
+    --primary: 227 29% 24%;
+    --primary-foreground: 220 33% 98%;
+    --secondary: 223 22% 90%;
+    --secondary-foreground: 227 18% 24%;
+    --muted: 222 21% 92%;
+    --muted-foreground: 223 10% 42%;
+    --accent: 145 43% 38%;
+    --accent-foreground: 145 40% 97%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 223 16% 83%;
+    --input: 223 16% 83%;
+    --ring: 145 43% 38%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 226 22% 10%;
+    --foreground: 220 22% 92%;
+    --card: 226 20% 12%;
+    --card-foreground: 220 22% 92%;
+    --popover: 226 20% 12%;
+    --popover-foreground: 220 22% 92%;
+    --primary: 222 30% 74%;
+    --primary-foreground: 227 22% 14%;
+    --secondary: 226 14% 20%;
+    --secondary-foreground: 220 20% 90%;
+    --muted: 226 12% 16%;
+    --muted-foreground: 220 10% 66%;
+    --accent: 145 38% 60%;
+    --accent-foreground: 145 26% 12%;
+    --destructive: 0 91% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 226 12% 26%;
+    --input: 226 12% 22%;
+    --ring: 145 38% 60%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom utility classes for enhanced UI */
+@layer utilities {
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
 }
