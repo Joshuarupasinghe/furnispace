@@ -13,6 +13,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
@@ -100,6 +101,29 @@ export function AdminSidebar() {
             </Link>
           )
         })}
+
+        {/* 3D Designer — special accent button */}
+        <div className={cn("pt-3", !isCollapsed && "px-0")}>
+          {!isCollapsed && (
+            <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Tools
+            </p>
+          )}
+          <Link
+            href="/admin/designer"
+            className={cn(
+              "group flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200",
+              pathname === "/admin/designer" || pathname.startsWith("/admin/designer/")
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/30"
+                : "bg-gradient-to-r from-violet-500/10 to-indigo-500/10 text-violet-500 hover:from-violet-600 hover:to-indigo-600 hover:text-white hover:shadow-lg hover:shadow-violet-500/30",
+              isCollapsed && "justify-center rounded-xl px-3"
+            )}
+            title={isCollapsed ? "3D Designer" : undefined}
+          >
+            <Sparkles className="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:rotate-12" />
+            {!isCollapsed && "3D Designer"}
+          </Link>
+        </div>
       </nav>
 
       {/* Collapse toggle and Logout */}
