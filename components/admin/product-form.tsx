@@ -80,6 +80,13 @@ export function ProductForm({ product, categories }: ProductFormProps) {
 
       if (!response.ok) {
         const error = await response.json()
+        // Surface specific Zod field errors if available
+        if (error.details && Array.isArray(error.details)) {
+          const fieldErrors = error.details
+            .map((d: { path: string[]; message: string }) => `${d.path.join(".")}: ${d.message}`)
+            .join("\n")
+          throw new Error(fieldErrors || error.error || "Failed to save product")
+        }
         throw new Error(error.error || "Failed to save product")
       }
 

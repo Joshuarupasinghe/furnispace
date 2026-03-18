@@ -2,12 +2,19 @@ import { z } from "zod"
 import { PRODUCT_STATUS_LIST } from "./config"
 
 const Dimensions = z.object({
-  width: z.number().min(0.1),
-  length: z.number().min(0.1),
-  height: z.number().min(0.1),
+  width: z.number().min(0, "Width must be 0 or greater"),
+  length: z.number().min(0, "Length must be 0 or greater"),
+  height: z.number().min(0, "Height must be 0 or greater"),
 })
 
 const ProductStatusSchema = z.enum(PRODUCT_STATUS_LIST)
+
+// Accepts any non-empty string path (relative paths like /api/assets/... are valid here)
+// z.string().url() requires full absolute http(s) URLs which our internal asset paths are not
+const optionalUrl = z.preprocess(
+  (v) => (!v || v === "" ? undefined : v),
+  z.string().min(1).optional()
+)
 
 const BaseCreateProductSchema = z.object({
   name: z.string().min(1).max(255),
@@ -16,11 +23,11 @@ const BaseCreateProductSchema = z.object({
   price: z.number().min(0),
   dimensions: Dimensions,
   colors: z.array(z.string()).optional().default([]),
-  image_url: z.string().url().optional(),
-  image_urls: z.array(z.string().url()).optional().default([]),
-  model_url: z.string().url().optional(),
-  obj_url: z.string().url().optional(),
-  mtl_url: z.string().url().optional(),
+  image_url: optionalUrl,
+  image_urls: z.array(z.string().min(1)).optional().default([]),
+  model_url: optionalUrl,
+  obj_url: optionalUrl,
+  mtl_url: optionalUrl,
   status: ProductStatusSchema.default("active"),
 })
 

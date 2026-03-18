@@ -22,6 +22,10 @@ const imageHosts = [
 ].filter((host): host is string => Boolean(host))
 
 const nextConfig: NextConfig = {
+  // Allow large file uploads for 3D model OBJ/GLB files (can exceed the 10 MB default)
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+  },
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost" },

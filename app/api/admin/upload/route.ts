@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { uploadToR2, isValidImageFile, isValidModelFile, isR2Configured } from "@/lib/r2"
 
+// Increase the body size limit for this route to allow large 3D model uploads
+export const maxDuration = 60 // seconds – give R2 upload time to complete
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   try {
     await requireAuth()
