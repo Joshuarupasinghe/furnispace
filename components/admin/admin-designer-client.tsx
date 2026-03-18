@@ -39,6 +39,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 
 /** Solid fallback swatches mirroring room-config defaults. */
@@ -423,61 +429,88 @@ export function AdminDesignerClient() {
 
         <div className="flex min-h-0 flex-1">
           <main className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-muted/40">
-            <aside className="absolute left-8 top-1/2 z-20 flex w-12 -translate-y-1/2 flex-col items-center gap-2 rounded-3xl border border-border bg-card/95 p-2 shadow-lg">
-              <Button
-                size="icon"
-                variant="ghost"
-                className={`h-9 w-9 rounded-full ${showCatalog ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-                onClick={() => setShowCatalog((v) => !v)}
-                aria-label="Toggle catalog"
-              >
-                <PencilRuler className="h-4 w-4" />
-              </Button>
-              <Link href="/admin">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label="Go to dashboard"
-                >
-                  <Home className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={!canUndo()}
-                className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  undo()
-                }}
-                aria-label="Undo"
-              >
-                <Undo2 className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={!canRedo()}
-                className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  redo()
-                }}
-                aria-label="Redo"
-              >
-                <Redo2 className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={!currentDesign?.furnitureItems.length}
-                className="h-9 w-9 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setShowResetDialog(true)}
-                aria-label="Reset design"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </aside>
+            <TooltipProvider delayDuration={400}>
+              <aside className="absolute left-8 top-1/2 z-20 flex w-12 -translate-y-1/2 flex-col items-center gap-2 rounded-3xl border border-border bg-card/95 p-2 shadow-lg">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-9 w-9 rounded-full ${showCatalog ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                      onClick={() => setShowCatalog((v) => !v)}
+                      aria-label="Toggle catalog"
+                    >
+                      <PencilRuler className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Toggle furniture catalog</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href="/admin">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label="Go to dashboard"
+                      >
+                        <Home className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Go to dashboard</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={!canUndo()}
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => undo()}
+                      aria-label="Undo"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Undo (⌘Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={!canRedo()}
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => redo()}
+                      aria-label="Redo"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Redo (⌘⇧Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={!currentDesign?.furnitureItems.length}
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setShowResetDialog(true)}
+                      aria-label="Clear all furniture"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Clear all furniture</TooltipContent>
+                </Tooltip>
+              </aside>
+            </TooltipProvider>
 
             {showCatalog ? (
               <div className="absolute left-20 top-10 bottom-10 z-20 hidden w-[320px] overflow-hidden rounded-2xl border border-border bg-card/95 p-3 shadow-xl lg:block">

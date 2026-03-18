@@ -1,105 +1,161 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
+import { ChevronDown, Check } from "lucide-react"
 
 export interface TextureOption {
   value: string
   label: string
-  /** Image URL for the thumbnail preview. If omitted a color swatch is shown. */
+  /** Image URL for the thumbnail preview. Falls back to a solid colour swatch. */
   previewUrl?: string
-  /** Fallback solid color used when previewUrl is absent or fails to load */
+  /** Solid colour shown when previewUrl is absent or fails to load */
   solidColor?: string
   category?: string
 }
 
-interface TextureThumbnailPickerProps {
+interface Props {
   options: TextureOption[]
   value: string
   onChange: (value: string) => void
-  /** Size of each round thumbnail in px. Defaults to 48. */
-  size?: number
+  /** Thumbnail circle size in px. Defaults to 36. */
+  thumbSize?: number
+  placeholder?: string
   className?: string
 }
 
+/** Round thumbnail for a single texture option. */
+function TextureThumb({
+  option,
+  size = 36,
+}: {
+  option: TextureOption
+  size?: number
+}) {
+  const [failed, setFailed] = useState(false)
+  const showImg = !!option.previewUrl && !failed
+
+  return (
+    <span
+      className="inline-flex shrink-0 overflow-hidden rounded-full border border-border"
+      style={{ width: size, height: size }}
+    >
+      {showImg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={option.previewUrl}
+          alt={option.label}
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span
+          className="h-full w-full"
+          style={{ backgroundColor: option.solidColor ?? "#e5e7eb" }}
+        />
+      )}
+    </span>
+  )
+}
+
 /**
- * Displays a horizontally-wrapping grid of round thumbnail buttons.
- * Clicking a thumbnail selects that texture value.
+ * Custom dropdown that shows a round thumbnail + label per row.
+ * Replaces the previous grid-of-circles approach.
  */
 export function TextureThumbnailPicker({
   options,
   value,
   onChange,
-  size = 48,
+  thumbSize = 36,
+  placeholder = "Select texture…",
   className,
-}: TextureThumbnailPickerProps) {
-  const [failedSrcs, setFailedSrcs] = useState<Set<string>>(new Set())
+}: Props) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const selected = options.find((o) => o.value === value)
+
+  // Close when clicking outside
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
 
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
-      {options.map((opt) => {
-        const isSelected = opt.value === value
-        const hasFailed = opt.previewUrl ? failedSrcs.has(opt.previewUrl) : true
-        const showImage = !!opt.previewUrl && !hasFailed
+    <div ref={containerRef} className={cn("relative", className)}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm transition-all",
+          "hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          open && "border-primary ring-2 ring-primary/30"
+        )}
+      >
+        {selected ? (
+          <>
+            <TextureThumb option={selected} size={thumbSize} />
+            <span className="flex-1 text-left font-medium text-foreground">
+              {selected.label}
+            </span>
+          </>
+        ) : (
+          <span className="flex-1 text-left text-muted-foreground">{placeholder}</span>
+        )}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
 
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            title={opt.label}
-            aria-label={`Select texture: ${opt.label}`}
-            aria-pressed={isSelected}
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              "relative shrink-0 overflow-hidden rounded-full border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-              isSelected
-                ? "border-primary shadow-md ring-2 ring-primary ring-offset-1 scale-110"
-                : "border-border hover:border-primary/60 hover:scale-105"
-            )}
-            style={{ width: size, height: size }}
+      {/* Dropdown list */}
+      {open && (
+        <div
+          className={cn(
+            "absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border border-border bg-popover shadow-lg",
+            "animate-in fade-in-0 zoom-in-95"
+          )}
+        >
+          <ul
+            role="listbox"
+            className="max-h-56 overflow-y-auto py-1"
           >
-            {showImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={opt.previewUrl}
-                alt={opt.label}
-                className="h-full w-full object-cover"
-                onError={() =>
-                  setFailedSrcs((prev) => {
-                    const next = new Set(prev)
-                    next.add(opt.previewUrl!)
-                    return next
-                  })
-                }
-              />
-            ) : (
-              <span
-                className="flex h-full w-full items-center justify-center text-[9px] font-semibold leading-tight text-center px-0.5 text-foreground/70"
-                style={{ backgroundColor: opt.solidColor ?? "#e5e7eb" }}
-              >
-                {opt.label.length > 6 ? opt.label.slice(0, 5) + "…" : opt.label}
-              </span>
-            )}
-
-            {/* Selected tick overlay */}
-            {isSelected && (
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-primary/20">
-                <svg
-                  className="h-4 w-4 text-primary drop-shadow"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
+            {options.map((opt) => {
+              const isSelected = opt.value === value
+              return (
+                <li
+                  key={opt.value}
+                  role="option"
+                  aria-selected={isSelected}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors",
+                    isSelected
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                  onClick={() => {
+                    onChange(opt.value)
+                    setOpen(false)
+                  }}
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414L9 11.586l6.293-6.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </span>
-            )}
-          </button>
-        )
-      })}
+                  <TextureThumb option={opt} size={thumbSize} />
+                  <span className="flex-1">{opt.label}</span>
+                  {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
