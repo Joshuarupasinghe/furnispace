@@ -8,30 +8,26 @@ import { ModelViewerFallback } from "./model-viewer-fallback"
 import { Furniture3D } from "./furniture-3d"
 import { EXTERNAL_URLS } from "@/lib/config"
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "model-viewer": {
-        src: string
-        alt?: string
-        "ar-mode"?: string
-        "ar-modes"?: string
-        "ar-scale"?: string
-        "camera-controls"?: boolean
-        "auto-rotate"?: boolean
-        "interaction-policy"?: string
-        "poster"?: string
-        "reveal"?: string
-        "loading"?: string
-        "shadow-intensity"?: string
-        "exposure"?: string
-        style?: React.CSSProperties
-        className?: string
-        children?: React.ReactNode
-        ref?: React.Ref<any>
-      }
-    }
-  }
+interface ModelViewerElement extends HTMLElement {
+  loaded?: boolean
+  src?: string
+}
+
+type ModelViewerTagProps = React.DetailedHTMLProps<React.HTMLAttributes<ModelViewerElement>, ModelViewerElement> & {
+  src: string
+  alt?: string
+  "ar-mode"?: string
+  "ar-modes"?: string
+  "ar-scale"?: string
+  "camera-controls"?: boolean
+  "auto-rotate"?: boolean
+  "interaction-policy"?: string
+  "poster"?: string
+  "reveal"?: string
+  "loading"?: string
+  "shadow-intensity"?: string
+  "exposure"?: string
+  children?: React.ReactNode
 }
 
 interface ModelViewerProps {
@@ -50,6 +46,11 @@ interface ModelViewerProps {
 // Reliable demo model URL
 const DEMO_MODEL = EXTERNAL_URLS.MODEL_VIEWER_DEMO
 
+const isModelViewerDefined = () => {
+  if (typeof window === "undefined") return false
+  return window.customElements.get("model-viewer") !== undefined
+}
+
 export function ModelViewer({ 
   src, 
   alt = "3D Model", 
@@ -62,46 +63,23 @@ export function ModelViewer({
   mtlUrl,
   color
 }: ModelViewerProps) {
-  const viewerRef = useRef<any>(null)
+  const viewerRef = useRef<ModelViewerElement | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [modelSrc] = useState(src || DEMO_MODEL)
-  const [isModelViewerReady, setIsModelViewerReady] = useState(false)
+  const [isModelViewerReady, setIsModelViewerReady] = useState(() => isModelViewerDefined())
   const [scriptLoaded, setScriptLoaded] = useState(false)
-  const [useFallback, setUseFallback] = useState(false)
-  
-  // If we have furniture type and dimensions, prefer Three.js model (matches furniture type)
-  const shouldUseFurnitureModel = furnitureType && dimensions
 
-  // If we should use furniture-specific model, skip model-viewer loading
-  useEffect(() => {
-    if (shouldUseFurnitureModel) {
-      setUseFallback(true)
-      setIsLoaded(true)
-      return
-    }
-  }, [shouldUseFurnitureModel])
+  // If we have furniture type and dimensions, prefer Three.js model (matches furniture type)
+  const shouldUseFurnitureModel = Boolean(furnitureType && dimensions)
 
   // Check if model-viewer is ready
   useEffect(() => {
-    if (!scriptLoaded || shouldUseFurnitureModel) return
-
-    const checkModelViewer = () => {
-      if (typeof window !== "undefined" && (window as any).customElements) {
-        return (window as any).customElements.get("model-viewer") !== undefined
-      }
-      return false
-    }
-
-    // Check immediately
-    if (checkModelViewer()) {
-      setIsModelViewerReady(true)
-      return
-    }
+    if (!scriptLoaded || shouldUseFurnitureModel || isModelViewerReady) return
 
     // Poll for custom element
     const interval = setInterval(() => {
-      if (checkModelViewer()) {
+      if (isModelViewerDefined()) {
         setIsModelViewerReady(true)
         clearInterval(interval)
       }
@@ -110,7 +88,7 @@ export function ModelViewer({
     // Timeout after 3 seconds
     const timeout = setTimeout(() => {
       clearInterval(interval)
-      if (!checkModelViewer()) {
+      if (!isModelViewerDefined()) {
         console.warn("model-viewer not available, using fallback")
         setHasError(true)
       }
@@ -120,7 +98,7 @@ export function ModelViewer({
       clearInterval(interval)
       clearTimeout(timeout)
     }
-  }, [scriptLoaded])
+  }, [scriptLoaded, shouldUseFurnitureModel, isModelViewerReady])
 
   // Handle model loading
   useEffect(() => {
@@ -133,11 +111,10 @@ export function ModelViewer({
         setHasError(false)
       }
 
-      const handleError = (e: any) => {
+      const handleError = (e: Event) => {
         console.error("Model error:", e)
         // If we have furniture type and dimensions, use Three.js fallback instead
         if (furnitureType && dimensions) {
-          setUseFallback(true)
           setIsLoaded(true) // Show the fallback immediately
         } else {
           setHasError(true)
@@ -147,21 +124,17 @@ export function ModelViewer({
       viewer.addEventListener("load", handleLoad)
       viewer.addEventListener("error", handleError)
 
-      if (viewer.loaded) {
-        setIsLoaded(true)
-      }
-
       return () => {
         viewer.removeEventListener("load", handleLoad)
         viewer.removeEventListener("error", handleError)
       }
     }
-  }, [isModelViewerReady, modelSrc])
+  }, [isModelViewerReady, modelSrc, shouldUseFurnitureModel, furnitureType, dimensions])
 
   // Timeout fallback
   useEffect(() => {
     if (shouldUseFurnitureModel) return
-    if (isModelViewerReady && !isLoaded && !hasError && !useFallback) {
+    if (isModelViewerReady && !isLoaded && !hasError) {
       const timeout = setTimeout(() => {
         if (viewerRef.current?.loaded) {
           setIsLoaded(true)
@@ -178,7 +151,7 @@ export function ModelViewer({
 
       return () => clearTimeout(timeout)
     }
-  }, [isModelViewerReady, isLoaded, hasError, useFallback, furnitureType, dimensions])
+  }, [isModelViewerReady, isLoaded, hasError, furnitureType, dimensions, shouldUseFurnitureModel])
 
   const handleRetry = () => {
     setHasError(false)
@@ -283,60 +256,60 @@ export function ModelViewer({
             )}
           </>
         )}
-        {isModelViewerReady && !hasError && !useFallback && (
-          <model-viewer
-            ref={viewerRef}
-            src={modelSrc}
-            alt={alt}
-            ar-modes={ar ? "webxr scene-viewer quick-look" : undefined}
-            ar-scale="auto"
-            camera-controls
-            auto-rotate={autoRotate}
-            interaction-policy="allow-when-focused"
-            loading="auto"
-            reveal="auto"
-            shadow-intensity="1"
-            exposure="1"
-            style={{
+        {isModelViewerReady && !hasError && React.createElement(
+          "model-viewer",
+          {
+            ref: viewerRef,
+            src: modelSrc,
+            alt,
+            "ar-modes": ar ? "webxr scene-viewer quick-look" : undefined,
+            "ar-scale": "auto",
+            "camera-controls": true,
+            "auto-rotate": autoRotate,
+            "interaction-policy": "allow-when-focused",
+            loading: "auto",
+            reveal: "auto",
+            "shadow-intensity": "1",
+            exposure: "1",
+            style: {
               width: "100%",
               height: "100%",
               backgroundColor: "#f5f5f5",
-            }}
-          >
-            {ar && isLoaded && (
-              <button
-                slot="ar-button"
-                style={{
-                  position: "absolute",
-                  bottom: "16px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  zIndex: 10,
-                  backgroundColor: "hsl(var(--primary))",
-                  color: "hsl(var(--primary-foreground))",
-                  padding: "12px 24px",
-                  borderRadius: "8px",
-                  fontWeight: 600,
-                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  transition: "opacity 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = "0.9"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = "1"
-                }}
-              >
-                <Smartphone style={{ width: "16px", height: "16px" }} />
-                View in AR
-              </button>
-            )}
-          </model-viewer>
+            },
+          } satisfies ModelViewerTagProps,
+          ar && isLoaded ? (
+            <button
+              slot="ar-button"
+              style={{
+                position: "absolute",
+                bottom: "16px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 10,
+                backgroundColor: "hsl(var(--primary))",
+                color: "hsl(var(--primary-foreground))",
+                padding: "12px 24px",
+                borderRadius: "8px",
+                fontWeight: 600,
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "opacity 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.9"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "1"
+              }}
+            >
+              <Smartphone style={{ width: "16px", height: "16px" }} />
+              View in AR
+            </button>
+          ) : null,
         )}
       </div>
     </>

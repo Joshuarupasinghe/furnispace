@@ -40,7 +40,7 @@ export function Viewer3D() {
   const controlsRef = useRef<any>(null)
   const furnitureMeshesRef = useRef<Map<string, THREE.Group>>(new Map())
   const pendingLoadsRef = useRef<Set<string>>(new Set())
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | null>(null)
   const selectionHelperRef = useRef<THREE.BoxHelper | null>(null)
   
   // Interaction state
