@@ -18,23 +18,48 @@ function getShadedColor(color: string, shading = 0.5): THREE.Color {
 }
 
 function applyItemAppearance(material: THREE.Material, itemColor: string, shading = 0.5): THREE.Material {
+  const shadedColor = getShadedColor(itemColor, shading)
+
   if (
     material instanceof THREE.MeshStandardMaterial ||
     material instanceof THREE.MeshPhongMaterial ||
     material instanceof THREE.MeshLambertMaterial
   ) {
-    const next = material.clone()
-    if (next.color) {
-      next.color.copy(getShadedColor(itemColor, shading))
+    const next = material.clone() as
+      | THREE.MeshStandardMaterial
+      | THREE.MeshPhongMaterial
+      | THREE.MeshLambertMaterial
+
+    // Clear baked texture maps so the user colour shows fully instead of
+    // multiplying against the model's original texture.
+    if ((next as any).map) {
+      (next as any).map = null
     }
+    if ((next as any).aoMap) {
+      (next as any).aoMap = null
+    }
+
+    next.color.copy(shadedColor)
+
     if (next instanceof THREE.MeshStandardMaterial) {
-      // More shading means less reflectance and slightly rougher finish.
       next.metalness = Math.max(0, Math.min(1, 0.15 - shading * 0.1))
       next.roughness = Math.max(0.3, Math.min(1, 0.65 + shading * 0.25))
     }
     next.needsUpdate = true
     return next
   }
+
+  // MeshBasicMaterial (common in some GLTF exports)
+  if (material instanceof THREE.MeshBasicMaterial) {
+    const next = material.clone() as THREE.MeshBasicMaterial
+    if ((next as any).map) {
+      (next as any).map = null
+    }
+    next.color.copy(shadedColor)
+    next.needsUpdate = true
+    return next
+  }
+
   return material
 }
 
