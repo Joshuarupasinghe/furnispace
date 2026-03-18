@@ -9,36 +9,57 @@ import { Button } from "@/components/ui/button"
 import { RoomConfig, FloorTextureType, WallMaterialType } from "@/types/design"
 import { useDesignStore } from "@/store/design-store"
 import { useToast } from "@/hooks/use-toast"
-
-interface TextureOption {
-  value: string
-  label: string
-  category?: string
-}
+import { TextureThumbnailPicker, TextureOption } from "@/components/designer/texture-thumbnail-picker"
 
 interface ApiTexture {
   id: string
   name: string
   type: "floor" | "wall"
   category?: string
+  file_url?: string
+}
+
+/** Build a preview URL for a texture option. Tries the API file_url first,
+ *  then falls back to the legacy public path. */
+function resolvePreviewUrl(value: string, type: "floor" | "wall", fileUrl?: string): string | undefined {
+  if (fileUrl) return fileUrl
+  if (value === "none" || value === "color") return undefined
+  const dir = type === "floor" ? "floors" : "walls"
+  return `/textures/${dir}/${value}.jpg`
+}
+
+/** Solid fill colours shown when the real texture image is unavailable. */
+const SWATCH_COLORS: Record<string, string> = {
+  none: "#f5f5f5",
+  color: "#eeeeee",
+  "wood-oak": "#b08a5e",
+  "wood-walnut": "#6b4226",
+  "wood-light": "#e0c49a",
+  "tile-marble": "#e8e8e8",
+  "tile-ceramic": "#d0d8e0",
+  "tile-slate": "#6b7280",
+  "panel-wood": "#8b5c2a",
+  "panel-white": "#f8f8f8",
+  brick: "#b34e2b",
+  concrete: "#9ca3af",
 }
 
 const LEGACY_FLOOR_TEXTURES: TextureOption[] = [
-  { value: 'none', label: 'Solid Color', category: 'Basic' },
-  { value: 'wood-oak', label: 'Oak Wood', category: 'Wood' },
-  { value: 'wood-walnut', label: 'Walnut Wood', category: 'Wood' },
-  { value: 'wood-light', label: 'Light Wood', category: 'Wood' },
-  { value: 'tile-marble', label: 'Marble', category: 'Tile' },
-  { value: 'tile-ceramic', label: 'Ceramic', category: 'Tile' },
-  { value: 'tile-slate', label: 'Slate', category: 'Tile' },
+  { value: "none", label: "Solid Color", solidColor: SWATCH_COLORS["none"] },
+  { value: "wood-oak", label: "Oak Wood", solidColor: SWATCH_COLORS["wood-oak"], previewUrl: "/textures/floors/wood-oak.jpg" },
+  { value: "wood-walnut", label: "Walnut", solidColor: SWATCH_COLORS["wood-walnut"], previewUrl: "/textures/floors/wood-walnut.jpg" },
+  { value: "wood-light", label: "Light Wood", solidColor: SWATCH_COLORS["wood-light"], previewUrl: "/textures/floors/wood-light.jpg" },
+  { value: "tile-marble", label: "Marble", solidColor: SWATCH_COLORS["tile-marble"], previewUrl: "/textures/floors/tile-marble.jpg" },
+  { value: "tile-ceramic", label: "Ceramic", solidColor: SWATCH_COLORS["tile-ceramic"], previewUrl: "/textures/floors/tile-ceramic.jpg" },
+  { value: "tile-slate", label: "Slate", solidColor: SWATCH_COLORS["tile-slate"], previewUrl: "/textures/floors/tile-slate.jpg" },
 ]
 
 const LEGACY_WALL_TEXTURES: TextureOption[] = [
-  { value: 'color', label: 'Solid Color' },
-  { value: 'panel-wood', label: 'Wood Panels' },
-  { value: 'panel-white', label: 'White Panels' },
-  { value: 'brick', label: 'Brick' },
-  { value: 'concrete', label: 'Concrete' },
+  { value: "color", label: "Solid Color", solidColor: SWATCH_COLORS["color"] },
+  { value: "panel-wood", label: "Wood Panels", solidColor: SWATCH_COLORS["panel-wood"], previewUrl: "/textures/walls/panel-wood.jpg" },
+  { value: "panel-white", label: "White Panels", solidColor: SWATCH_COLORS["panel-white"], previewUrl: "/textures/walls/panel-white.jpg" },
+  { value: "brick", label: "Brick", solidColor: SWATCH_COLORS["brick"], previewUrl: "/textures/walls/brick.jpg" },
+  { value: "concrete", label: "Concrete", solidColor: SWATCH_COLORS["concrete"], previewUrl: "/textures/walls/concrete.jpg" },
 ]
 
 interface RoomConfigProps {
@@ -67,25 +88,22 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
     const loadTextures = async () => {
       try {
         const response = await fetch("/api/textures")
-        if (!response.ok) {
-          return
-        }
+        if (!response.ok) return
 
         const textures = (await response.json()) as ApiTexture[]
-        if (!mounted) {
-          return
-        }
+        if (!mounted) return
 
-        const floorOptions: TextureOption[] = [{ value: "none", label: "Solid Color", category: "Basic" }]
-        const wallOptions: TextureOption[] = [{ value: "color", label: "Solid Color" }]
+        const floorOptions: TextureOption[] = [{ value: "none", label: "Solid Color", solidColor: SWATCH_COLORS["none"] }]
+        const wallOptions: TextureOption[] = [{ value: "color", label: "Solid Color", solidColor: SWATCH_COLORS["color"] }]
 
         for (const texture of textures) {
           const option: TextureOption = {
             value: texture.id,
             label: texture.name,
             category: texture.category,
+            previewUrl: resolvePreviewUrl(texture.id, texture.type, texture.file_url),
+            solidColor: SWATCH_COLORS[texture.id] ?? (texture.type === "floor" ? "#c5a880" : "#d4d4d4"),
           }
-
           if (texture.type === "floor") {
             floorOptions.push(option)
           } else {
@@ -93,58 +111,36 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
           }
         }
 
-        if (floorOptions.length > 1) {
-          setFloorTextureOptions(floorOptions)
-        }
-        if (wallOptions.length > 1) {
-          setWallTextureOptions(wallOptions)
-        }
+        if (floorOptions.length > 1) setFloorTextureOptions(floorOptions)
+        if (wallOptions.length > 1) setWallTextureOptions(wallOptions)
       } catch {
         // Keep legacy defaults if texture fetch fails.
       }
     }
 
     void loadTextures()
-
-    return () => {
-      mounted = false
-    }
+    return () => { mounted = false }
   }, [])
 
   const resolvedFloorOptions = useMemo(() => {
-    const exists = floorTextureOptions.some((texture) => texture.value === config.floorTexture)
-    if (!config.floorTexture || exists) {
-      return floorTextureOptions
-    }
-
+    const exists = floorTextureOptions.some((t) => t.value === config.floorTexture)
+    if (!config.floorTexture || exists) return floorTextureOptions
     return [
       ...floorTextureOptions,
-      {
-        value: config.floorTexture,
-        label: "Current texture",
-        category: "Saved",
-      },
+      { value: config.floorTexture, label: "Current texture", solidColor: "#c5a880" },
     ]
   }, [config.floorTexture, floorTextureOptions])
 
   const resolvedWallOptions = useMemo(() => {
-    const exists = wallTextureOptions.some((texture) => texture.value === config.wallMaterial)
-    if (!config.wallMaterial || exists) {
-      return wallTextureOptions
-    }
-
+    const exists = wallTextureOptions.some((t) => t.value === config.wallMaterial)
+    if (!config.wallMaterial || exists) return wallTextureOptions
     return [
       ...wallTextureOptions,
-      {
-        value: config.wallMaterial,
-        label: "Current texture",
-        category: "Saved",
-      },
+      { value: config.wallMaterial, label: "Current texture", solidColor: "#d4d4d4" },
     ]
   }, [config.wallMaterial, wallTextureOptions])
 
   const handleSubmit = () => {
-    // Validate room configuration
     if (config.width <= 0 || config.length <= 0 || config.height <= 0) {
       toast({
         title: "Invalid room dimensions",
@@ -153,9 +149,10 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
       })
       return
     }
-    // Only validate color if no texture is selected
-    if ((!config.floorTexture || config.floorTexture === 'none') && 
-        (!config.colorScheme || !config.colorScheme.match(/^#[0-9A-Fa-f]{6}$/))) {
+    if (
+      (!config.floorTexture || config.floorTexture === "none") &&
+      (!config.colorScheme || !config.colorScheme.match(/^#[0-9A-Fa-f]{6}$/))
+    ) {
       toast({
         title: "Invalid floor color",
         description: "Use hex format like #RRGGBB.",
@@ -163,12 +160,9 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
       })
       return
     }
-    
+
     setRoomConfig(config)
-    toast({
-      title: "Room configured",
-      description: "Your room settings were applied.",
-    })
+    toast({ title: "Room configured", description: "Your room settings were applied." })
     onComplete()
   }
 
@@ -179,6 +173,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
   return (
     <Card>
       <CardContent className="space-y-4 mt-4">
+        {/* Room shape */}
         <div className="space-y-2">
           <Label>Room Shape</Label>
           <Select
@@ -198,6 +193,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
           </Select>
         </div>
 
+        {/* Dimensions */}
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Width (m)</Label>
@@ -206,9 +202,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
               min="0.1"
               step="0.1"
               value={config.width}
-              onChange={(e) =>
-                setConfig({ ...config, width: parseFloat(e.target.value) || 0 })
-              }
+              onChange={(e) => setConfig({ ...config, width: parseFloat(e.target.value) || 0 })}
             />
           </div>
           <div className="space-y-2">
@@ -218,9 +212,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
               min="0.1"
               step="0.1"
               value={config.length}
-              onChange={(e) =>
-                setConfig({ ...config, length: parseFloat(e.target.value) || 0 })
-              }
+              onChange={(e) => setConfig({ ...config, length: parseFloat(e.target.value) || 0 })}
             />
           </div>
           <div className="space-y-2">
@@ -230,41 +222,30 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
               min="0.1"
               step="0.1"
               value={config.height}
-              onChange={(e) =>
-                setConfig({ ...config, height: parseFloat(e.target.value) || 0 })
-              }
+              onChange={(e) => setConfig({ ...config, height: parseFloat(e.target.value) || 0 })}
             />
           </div>
         </div>
 
+        {/* Floor Texture thumbnails */}
         <div className="space-y-2">
           <Label>Floor Texture</Label>
-          <Select
-            value={config.floorTexture || 'none'}
-            onValueChange={(value: FloorTextureType) =>
-              setConfig({ ...config, floorTexture: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {resolvedFloorOptions.map((texture) => (
-                <SelectItem key={texture.value} value={texture.value}>
-                  {texture.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TextureThumbnailPicker
+            options={resolvedFloorOptions}
+            value={config.floorTexture || "none"}
+            onChange={(value) => setConfig({ ...config, floorTexture: value as FloorTextureType })}
+            size={52}
+          />
         </div>
 
-        {config.floorTexture === 'none' && (
+        {/* Floor color (only when "Solid Color" is selected) */}
+        {config.floorTexture === "none" && (
           <div className="space-y-2">
             <Label>Floor Color</Label>
             <div className="flex gap-2">
               <Input
                 type="color"
-                value={config.colorScheme || '#f5f5f5'}
+                value={config.colorScheme || "#f5f5f5"}
                 onChange={(e) => setConfig({ ...config, colorScheme: e.target.value })}
                 className="w-20 h-10"
               />
@@ -281,40 +262,31 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
           </div>
         )}
 
+        {/* Wall Texture thumbnails */}
         <div className="space-y-2">
           <Label>Wall Texture</Label>
-          <Select
-            value={config.wallMaterial || 'color'}
-            onValueChange={(value: WallMaterialType) =>
-              setConfig({ ...config, wallMaterial: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {resolvedWallOptions.map((material) => (
-                <SelectItem key={material.value} value={material.value}>
-                  {material.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TextureThumbnailPicker
+            options={resolvedWallOptions}
+            value={config.wallMaterial || "color"}
+            onChange={(value) => setConfig({ ...config, wallMaterial: value as WallMaterialType })}
+            size={52}
+          />
         </div>
 
-        {config.wallMaterial === 'color' && (
+        {/* Wall color (only when "Solid Color" is selected) */}
+        {config.wallMaterial === "color" && (
           <div className="space-y-2">
             <Label>Wall Color</Label>
             <div className="flex gap-2">
               <Input
                 type="color"
-                value={config.wallColor || '#eeeeee'}
+                value={config.wallColor || "#eeeeee"}
                 onChange={(e) => setConfig({ ...config, wallColor: e.target.value })}
                 className="w-20 h-10"
               />
               <Input
                 type="text"
-                value={config.wallColor || '#eeeeee'}
+                value={config.wallColor || "#eeeeee"}
                 onChange={(e) => setConfig({ ...config, wallColor: e.target.value })}
                 placeholder="#eeeeee"
               />
@@ -322,8 +294,8 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
           </div>
         )}
 
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           className="w-full"
           disabled={!hasValidDimensions || !hasValidFloorColor}
         >

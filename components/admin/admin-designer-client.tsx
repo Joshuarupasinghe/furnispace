@@ -14,6 +14,9 @@ import { useDesignStore } from "@/store/design-store"
 import { deleteDesign, loadAllDesigns, loadDesign, saveDesign } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
 import { Design } from "@/types/design"
+import { TextureThumbnailPicker, TextureOption } from "@/components/designer/texture-thumbnail-picker"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
   PencilRuler,
@@ -36,8 +39,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+
+
+/** Solid fallback swatches mirroring room-config defaults. */
+const SWATCH_COLORS: Record<string, string> = {
+  none: "#f5f5f5",
+  color: "#eeeeee",
+  "wood-oak": "#b08a5e",
+  "wood-walnut": "#6b4226",
+  "wood-light": "#e0c49a",
+  "tile-marble": "#e8e8e8",
+  "tile-ceramic": "#d0d8e0",
+  "tile-slate": "#6b7280",
+  "panel-wood": "#8b5c2a",
+  "panel-white": "#f8f8f8",
+  brick: "#b34e2b",
+  concrete: "#9ca3af",
+}
+
+const DEFAULT_FLOOR_OPTIONS: TextureOption[] = [
+  { value: "none", label: "Solid Color", solidColor: SWATCH_COLORS["none"] },
+  { value: "wood-oak", label: "Oak Wood", solidColor: SWATCH_COLORS["wood-oak"], previewUrl: "/textures/floors/wood-oak.jpg" },
+  { value: "wood-walnut", label: "Walnut", solidColor: SWATCH_COLORS["wood-walnut"], previewUrl: "/textures/floors/wood-walnut.jpg" },
+  { value: "wood-light", label: "Light Wood", solidColor: SWATCH_COLORS["wood-light"], previewUrl: "/textures/floors/wood-light.jpg" },
+  { value: "tile-marble", label: "Marble", solidColor: SWATCH_COLORS["tile-marble"], previewUrl: "/textures/floors/tile-marble.jpg" },
+  { value: "tile-ceramic", label: "Ceramic", solidColor: SWATCH_COLORS["tile-ceramic"], previewUrl: "/textures/floors/tile-ceramic.jpg" },
+  { value: "tile-slate", label: "Slate", solidColor: SWATCH_COLORS["tile-slate"], previewUrl: "/textures/floors/tile-slate.jpg" },
+]
+
+const DEFAULT_WALL_OPTIONS: TextureOption[] = [
+  { value: "color", label: "Solid Color", solidColor: SWATCH_COLORS["color"] },
+  { value: "panel-wood", label: "Wood Panels", solidColor: SWATCH_COLORS["panel-wood"], previewUrl: "/textures/walls/panel-wood.jpg" },
+  { value: "panel-white", label: "White Panels", solidColor: SWATCH_COLORS["panel-white"], previewUrl: "/textures/walls/panel-white.jpg" },
+  { value: "brick", label: "Brick", solidColor: SWATCH_COLORS["brick"], previewUrl: "/textures/walls/brick.jpg" },
+  { value: "concrete", label: "Concrete", solidColor: SWATCH_COLORS["concrete"], previewUrl: "/textures/walls/concrete.jpg" },
+]
 
 export function AdminDesignerClient() {
   const searchParams = useSearchParams()
@@ -45,6 +81,7 @@ export function AdminDesignerClient() {
 
   const {
     roomConfig,
+    setRoomConfig,
     currentDesign,
     selectedFurnitureId,
     viewMode,
@@ -74,12 +111,42 @@ export function AdminDesignerClient() {
   const [savedDesigns, setSavedDesigns] = useState<Design[]>([])
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [sidebarFloorOptions, setSidebarFloorOptions] = useState<TextureOption[]>(DEFAULT_FLOOR_OPTIONS)
+  const [sidebarWallOptions, setSidebarWallOptions] = useState<TextureOption[]>(DEFAULT_WALL_OPTIONS)
 
   useEffect(() => {
     if (currentDesign?.name) {
       setDesignName(currentDesign.name)
     }
   }, [currentDesign])
+
+  // Load textures for the sidebar thumbnail pickers
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        const res = await fetch("/api/textures")
+        if (!res.ok || !mounted) return
+        const textures = await res.json() as { id: string; name: string; type: "floor" | "wall"; file_url?: string; category?: string }[]
+        const floor: TextureOption[] = [{ value: "none", label: "Solid Color", solidColor: SWATCH_COLORS["none"] }]
+        const wall: TextureOption[] = [{ value: "color", label: "Solid Color", solidColor: SWATCH_COLORS["color"] }]
+        for (const t of textures) {
+          const opt: TextureOption = {
+            value: t.id,
+            label: t.name,
+            previewUrl: t.file_url ?? (t.type === "floor" ? `/textures/floors/${t.id}.jpg` : `/textures/walls/${t.id}.jpg`),
+            solidColor: SWATCH_COLORS[t.id] ?? (t.type === "floor" ? "#c5a880" : "#d4d4d4"),
+          }
+          if (t.type === "floor") floor.push(opt)
+          else wall.push(opt)
+        }
+        if (floor.length > 1) setSidebarFloorOptions(floor)
+        if (wall.length > 1) setSidebarWallOptions(wall)
+      } catch { /* keep defaults */ }
+    }
+    void load()
+    return () => { mounted = false }
+  }, [])
 
   const refreshSavedDesigns = () => {
     const designs = loadAllDesigns()
@@ -467,29 +534,95 @@ export function AdminDesignerClient() {
               {inspectorTab === "properties" ? <PropertiesPanel /> : null}
 
               {inspectorTab === "rooms" ? (
-                <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm text-foreground">
-                  <p className="text-sm font-semibold text-foreground">Room specification</p>
-                  {roomConfig ? (
-                    <>
-                      <p>Shape: <span className="font-medium capitalize">{roomConfig.shape}</span></p>
-                      <p>Size: <span className="font-medium">{roomConfig.width}m x {roomConfig.length}m x {roomConfig.height}m</span></p>
-                      <p>Area: <span className="font-medium">{areaSqFt} sq.ft</span></p>
-                      <div className="flex gap-2 pt-2">
-                        <Button className="rounded-full" onClick={() => setShowRoomConfig(true)}>
-                          <PencilRuler className="mr-1.5 h-4 w-4" /> Edit Room
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="rounded-full"
-                          onClick={handleSwitchTo3D}
-                          disabled={!hasAppliedRoomDimensions}
-                        >
-                          <Eye className="mr-1.5 h-4 w-4" /> 3D View
-                        </Button>
+                <div className="space-y-4 text-sm text-foreground">
+                  {/* Room info card */}
+                  <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Room specification</p>
+                    {roomConfig ? (
+                      <>
+                        <p>Shape: <span className="font-medium capitalize">{roomConfig.shape}</span></p>
+                        <p>Size: <span className="font-medium">{roomConfig.width}m × {roomConfig.length}m × {roomConfig.height}m</span></p>
+                        <p>Area: <span className="font-medium">{areaSqFt} sq.ft</span></p>
+                        <div className="flex gap-2 pt-2">
+                          <Button className="rounded-full" onClick={() => setShowRoomConfig(true)}>
+                            <PencilRuler className="mr-1.5 h-4 w-4" /> Edit Room
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="rounded-full"
+                            onClick={handleSwitchTo3D}
+                            disabled={!hasAppliedRoomDimensions}
+                          >
+                            <Eye className="mr-1.5 h-4 w-4" /> 3D View
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">No room configuration found.</p>
+                    )}
+                  </div>
+
+                  {/* Texture configuration – only shown once a room is configured */}
+                  {roomConfig && (
+                    <div className="rounded-2xl border border-border bg-card p-4 space-y-5">
+                      <p className="text-sm font-semibold text-foreground">Textures</p>
+
+                      {/* Floor texture */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Floor</Label>
+                        <TextureThumbnailPicker
+                          options={sidebarFloorOptions}
+                          value={roomConfig.floorTexture || "none"}
+                          onChange={(val) => setRoomConfig({ ...roomConfig, floorTexture: val })}
+                          size={46}
+                        />
+                        {(roomConfig.floorTexture === "none" || !roomConfig.floorTexture) && (
+                          <div className="flex gap-2 pt-1">
+                            <Input
+                              type="color"
+                              value={roomConfig.colorScheme || "#f5f5f5"}
+                              onChange={(e) => setRoomConfig({ ...roomConfig, colorScheme: e.target.value })}
+                              className="h-9 w-14 border-border"
+                            />
+                            <Input
+                              type="text"
+                              value={roomConfig.colorScheme || ""}
+                              onChange={(e) => setRoomConfig({ ...roomConfig, colorScheme: e.target.value })}
+                              placeholder="#f5f5f5"
+                              className="h-9 border-border text-xs"
+                            />
+                          </div>
+                        )}
                       </div>
-                    </>
-                  ) : (
-                    <p>No room configuration found.</p>
+
+                      {/* Wall texture */}
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Walls</Label>
+                        <TextureThumbnailPicker
+                          options={sidebarWallOptions}
+                          value={roomConfig.wallMaterial || "color"}
+                          onChange={(val) => setRoomConfig({ ...roomConfig, wallMaterial: val })}
+                          size={46}
+                        />
+                        {(roomConfig.wallMaterial === "color" || !roomConfig.wallMaterial) && (
+                          <div className="flex gap-2 pt-1">
+                            <Input
+                              type="color"
+                              value={roomConfig.wallColor || "#eeeeee"}
+                              onChange={(e) => setRoomConfig({ ...roomConfig, wallColor: e.target.value })}
+                              className="h-9 w-14 border-border"
+                            />
+                            <Input
+                              type="text"
+                              value={roomConfig.wallColor || ""}
+                              onChange={(e) => setRoomConfig({ ...roomConfig, wallColor: e.target.value })}
+                              placeholder="#eeeeee"
+                              className="h-9 border-border text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               ) : null}
