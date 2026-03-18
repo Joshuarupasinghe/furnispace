@@ -16,13 +16,9 @@ import {
   deleteCategory as dbDeleteCategory,
   type Product,
   type Category,
-  type CreateProductInput,
-  type UpdateProductInput,
-  type CreateCategoryInput,
-  type UpdateCategoryInput,
 } from "./db-supabase"
 
-import { deleteFromR2 } from "./r2"
+import { deleteFromR2, extractR2ObjectKey, isR2Configured } from "./r2"
 import { validateCreateProduct, validateUpdateProduct, validateCreateCategory, validateUpdateCategory } from "./validation"
 
 export class ProductService {
@@ -57,38 +53,42 @@ export class ProductService {
       return false
     }
 
-    if (product.image_urls) {
-      for (const url of product.image_urls) {
+    if (isR2Configured()) {
+      const keys = new Set<string>()
+
+      const imageKey = extractR2ObjectKey(product.image_url)
+      if (imageKey) {
+        keys.add(imageKey)
+      }
+
+      for (const url of product.image_urls ?? []) {
+        const key = extractR2ObjectKey(url)
+        if (key) {
+          keys.add(key)
+        }
+      }
+
+      const modelKey = extractR2ObjectKey(product.model_url)
+      if (modelKey) {
+        keys.add(modelKey)
+      }
+
+      const objKey = extractR2ObjectKey(product.obj_url)
+      if (objKey) {
+        keys.add(objKey)
+      }
+
+      const mtlKey = extractR2ObjectKey(product.mtl_url)
+      if (mtlKey) {
+        keys.add(mtlKey)
+      }
+
+      for (const key of keys) {
         try {
-          const match = url.match(/\/([^?]+)$/)
-          if (match) {
-            await deleteFromR2(decodeURIComponent(match[1]))
-          }
+          await deleteFromR2(key)
         } catch (error) {
-          console.warn(`Failed to delete image from R2: ${url}`, error)
+          console.warn(`Failed to delete asset from R2: ${key}`, error)
         }
-      }
-    }
-
-    if (product.obj_url) {
-      try {
-        const match = product.obj_url.match(/\/([^?]+)$/)
-        if (match) {
-          await deleteFromR2(decodeURIComponent(match[1]))
-        }
-      } catch (error) {
-        console.warn(`Failed to delete OBJ from R2: ${product.obj_url}`, error)
-      }
-    }
-
-    if (product.mtl_url) {
-      try {
-        const match = product.mtl_url.match(/\/([^?]+)$/)
-        if (match) {
-          await deleteFromR2(decodeURIComponent(match[1]))
-        }
-      } catch (error) {
-        console.warn(`Failed to delete MTL from R2: ${product.mtl_url}`, error)
       }
     }
 

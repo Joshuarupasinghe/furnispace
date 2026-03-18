@@ -1,8 +1,34 @@
 import type { NextConfig } from "next";
 
+const r2PublicHost = (() => {
+  const value = process.env.R2_PUBLIC_URL?.trim()
+  if (!value) return null
+
+  try {
+    return new URL(value).hostname
+  } catch {
+    return null
+  }
+})()
+
+const r2DevHost = process.env.R2_BUCKET_NAME ? `${process.env.R2_BUCKET_NAME}.r2.dev` : null
+
+const imageHosts = [
+  "localhost",
+  "images.unsplash.com",
+  "source.unsplash.com",
+  r2PublicHost,
+  r2DevHost,
+].filter((host): host is string => Boolean(host))
+
 const nextConfig: NextConfig = {
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'source.unsplash.com'],
+    remotePatterns: [
+      { protocol: "http", hostname: "localhost" },
+      ...imageHosts
+        .filter((host) => host !== "localhost")
+        .map((hostname) => ({ protocol: "https" as const, hostname })),
+    ],
     unoptimized: true,
   },
   turbopack: {

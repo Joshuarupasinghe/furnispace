@@ -3,6 +3,24 @@ import { STORAGE_KEYS } from "@/lib/config"
 
 const STORAGE_KEY = STORAGE_KEYS.DESIGNS
 
+/**
+ * Normalizes a design to ensure all color fields have valid hex values
+ */
+function normalizeDesign(design: Design): Design {
+  return {
+    ...design,
+    roomConfig: {
+      ...design.roomConfig,
+      colorScheme: design.roomConfig.colorScheme || '#f5f5f5',
+      wallColor: design.roomConfig.wallColor || '#eeeeee',
+    },
+    furnitureItems: design.furnitureItems.map(item => ({
+      ...item,
+      color: item.color || '#888888',
+    })),
+  }
+}
+
 export function saveDesign(design: Design): void {
   if (typeof window === "undefined") return
 
@@ -31,7 +49,8 @@ export function loadAllDesigns(): Design[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
     if (!data) return []
-    return JSON.parse(data) as Design[]
+    const designs = JSON.parse(data) as Design[]
+    return designs.map(normalizeDesign)
   } catch (error) {
     console.error("Error loading designs from localStorage:", error)
     return []
@@ -40,7 +59,8 @@ export function loadAllDesigns(): Design[] {
 
 export function loadDesign(id: string): Design | null {
   const designs = loadAllDesigns()
-  return designs.find((d) => d.id === id) || null
+  const design = designs.find((d) => d.id === id) || null
+  return design ? normalizeDesign(design) : null
 }
 
 export function deleteDesign(id: string): void {

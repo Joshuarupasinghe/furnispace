@@ -1,6 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import { requireSupabaseAdmin } from "./supabase"
 import type { Design as InteriorDesign } from "@/types/design"
+import { resolveAssetUrl } from "./r2"
 
 export interface ProductDimensions {
   width: number
@@ -93,6 +94,12 @@ function formatSupabaseError(action: string, error: PostgrestError): Error {
 }
 
 function mapProduct(row: ProductRow): Product {
+  const imageUrl = resolveAssetUrl(row.image_url)
+  const imageUrls = (row.image_urls ?? []).map((value) => resolveAssetUrl(value)).filter(Boolean) as string[]
+  const modelUrl = resolveAssetUrl(row.model_url)
+  const objUrl = resolveAssetUrl(row.obj_url)
+  const mtlUrl = resolveAssetUrl(row.mtl_url)
+
   return {
     id: row.id,
     name: row.name,
@@ -101,11 +108,11 @@ function mapProduct(row: ProductRow): Product {
     price: row.price,
     dimensions: row.dimensions,
     colors: row.colors ?? [],
-    image_url: row.image_url ?? undefined,
-    image_urls: row.image_urls ?? [],
-    model_url: row.model_url ?? row.obj_url ?? undefined,
-    obj_url: row.obj_url ?? undefined,
-    mtl_url: row.mtl_url ?? undefined,
+    image_url: imageUrl,
+    image_urls: imageUrls,
+    model_url: modelUrl ?? objUrl,
+    obj_url: objUrl,
+    mtl_url: mtlUrl,
     status: row.status,
     created_at: row.created_at,
     updated_at: row.updated_at,

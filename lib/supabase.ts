@@ -1,18 +1,18 @@
 import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
-export const isSupabaseAdminConfigured = Boolean(supabaseUrl && supabaseServiceKey)
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey)
+export const isSupabaseAdminConfigured = Boolean(supabaseUrl && supabaseSecretKey)
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  ? createClient(supabaseUrl as string, supabasePublishableKey as string)
   : null
 
 export const supabaseAdmin = isSupabaseAdminConfigured
-  ? createClient(supabaseUrl as string, supabaseServiceKey as string, {
+  ? createClient(supabaseUrl as string, supabaseSecretKey as string, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -23,7 +23,7 @@ export const supabaseAdmin = isSupabaseAdminConfigured
 export function requireSupabaseAdmin() {
   if (!supabaseAdmin) {
     throw new Error(
-      "Supabase admin client is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+      "Supabase admin client is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY."
     )
   }
 

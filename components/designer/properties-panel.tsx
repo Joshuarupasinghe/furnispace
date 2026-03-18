@@ -121,14 +121,14 @@ export function PropertiesPanel() {
               <div className="flex gap-2">
                 <Input
                   type="color"
-                  value={selectedItem.color}
+                  value={selectedItem.color || '#888888'}
                   onChange={(e) => updateFurniture(selectedItem.id, { color: e.target.value })}
                   onBlur={(e) => commitSelectedItemChange({ color: e.target.value })}
                   className="h-10 w-20 border-border"
                 />
                 <Input
                   type="text"
-                  value={selectedItem.color}
+                  value={selectedItem.color || '#888888'}
                   onChange={(e) => updateFurniture(selectedItem.id, { color: e.target.value })}
                   onBlur={(e) => {
                     const normalized = normalizeHex(e.target.value)

@@ -3,19 +3,14 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 
+type GltfSceneResult = {
+  scene: THREE.Group
+}
+
 export interface ModelDimensions {
   width: number
   length: number
   height: number
-}
-
-export interface ObjMtlModelConfig {
-  basePath: string
-  objFile: string
-  mtlFile: string
-  targetDimensions?: ModelDimensions
-  normalize?: (group: THREE.Group) => void
-  postLoad?: (group: THREE.Group) => Promise<void>
 }
 
 function applyDefaultMeshSettings(group: THREE.Group): void {
@@ -87,40 +82,6 @@ function buildAssetCacheKey(config: DynamicModelAssetConfig): string {
   })
 }
 
-export async function loadObjMtlModel(config: ObjMtlModelConfig): Promise<THREE.Group> {
-  const materials = await new Promise<MTLLoader.MaterialCreator>((resolve, reject) => {
-    const mtlLoader = new MTLLoader()
-    mtlLoader.setPath(config.basePath)
-    mtlLoader.setResourcePath(config.basePath)
-    mtlLoader.load(config.mtlFile, resolve, undefined, reject)
-  })
-
-  materials.preload()
-
-  const group = await new Promise<THREE.Group>((resolve, reject) => {
-    const objLoader = new OBJLoader()
-    objLoader.setMaterials(materials)
-    objLoader.setPath(config.basePath)
-    objLoader.load(config.objFile, resolve, undefined, reject)
-  })
-
-  applyDefaultMeshSettings(group)
-
-  if (config.normalize) {
-    config.normalize(group)
-  }
-
-  if (config.targetDimensions) {
-    scaleModel(group, config.targetDimensions)
-  }
-
-  if (config.postLoad) {
-    await config.postLoad(group)
-  }
-
-  return group
-}
-
 export async function loadModelFromProductAssets(config: DynamicModelAssetConfig): Promise<THREE.Group> {
   const cacheKey = buildAssetCacheKey(config)
   const cachedPromise = modelPromiseCache.get(cacheKey)
@@ -150,7 +111,7 @@ export async function loadModelFromProductAssets(config: DynamicModelAssetConfig
   const extension = getExtension(primaryModelUrl)
 
   if (extension === "glb" || extension === "gltf") {
-    const gltf = await new Promise<any>((resolve, reject) => {
+    const gltf = await new Promise<GltfSceneResult>((resolve, reject) => {
       const loader = new GLTFLoader()
       loader.load(primaryModelUrl, resolve, undefined, reject)
     })
@@ -178,6 +139,7 @@ export async function loadModelFromProductAssets(config: DynamicModelAssetConfig
       }
       mtlLoader.load(mtlUrl, resolve, undefined, reject)
     })
+
     materials.preload()
 
     group = await new Promise<THREE.Group>((resolve, reject) => {

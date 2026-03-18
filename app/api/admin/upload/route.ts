@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
-import { uploadToR2, isValidImageFile, isValidModelFile } from "@/lib/r2"
+import { uploadToR2, isValidImageFile, isValidModelFile, isR2Configured } from "@/lib/r2"
 
 export async function POST(request: NextRequest) {
   try {
     await requireAuth()
 
+    if (!isR2Configured()) {
+      console.error("R2 Configuration Error: Missing R2 environment variables")
+      return NextResponse.json(
+        { error: "Cloudflare R2 is not configured. Please set R2 environment variables." },
+        { status: 500 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file") as File
-    const folder = (formData.get("folder") as string) || "uploads"
     const type = (formData.get("type") as string) || "image" // "image" or "model"
+    const folder =
+      (formData.get("folder") as string) || (type === "model" ? "products/models" : "products/images")
+
+    if (type !== "image" && type !== "model") {
+      return NextResponse.json({ error: "Invalid upload type" }, { status: 400 })
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
@@ -49,8 +62,9 @@ export async function POST(request: NextRequest) {
       key: result.key,
       fileName: file.name,
     })
-  } catch (error: any) {
-    console.error("Upload error:", error)
-    return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Upload failed"
+    console.error("Upload error:", message, error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

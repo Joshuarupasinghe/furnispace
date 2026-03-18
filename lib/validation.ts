@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { PRODUCT_STATUS_LIST, FILE_UPLOAD } from "./config"
+import { PRODUCT_STATUS_LIST } from "./config"
 
 const Dimensions = z.object({
   width: z.number().min(0.1),
@@ -9,7 +9,7 @@ const Dimensions = z.object({
 
 const ProductStatusSchema = z.enum(PRODUCT_STATUS_LIST)
 
-export const CreateProductSchema = z.object({
+const BaseCreateProductSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(2000).optional().default(""),
   category: z.string().min(1).max(100),
@@ -24,7 +24,26 @@ export const CreateProductSchema = z.object({
   status: ProductStatusSchema.default("active"),
 })
 
-export const UpdateProductSchema = CreateProductSchema.partial()
+function normalizeProductPayload(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return input
+  }
+
+  const payload = input as Record<string, unknown>
+
+  return {
+    ...payload,
+    image_url: payload.image_url ?? payload.imageUrl,
+    image_urls: payload.image_urls ?? payload.imageUrls,
+    model_url: payload.model_url ?? payload.modelUrl,
+    obj_url: payload.obj_url ?? payload.objUrl,
+    mtl_url: payload.mtl_url ?? payload.mtlUrl,
+  }
+}
+
+export const CreateProductSchema = z.preprocess(normalizeProductPayload, BaseCreateProductSchema)
+
+export const UpdateProductSchema = z.preprocess(normalizeProductPayload, BaseCreateProductSchema.partial())
 
 export const CreateCategorySchema = z.object({
   name: z.string().min(1).max(255),

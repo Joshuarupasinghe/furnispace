@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,10 +57,25 @@ export function ProductForm({ product, categories }: ProductFormProps) {
         : "/api/admin/products"
       const method = product ? "PUT" : "POST"
 
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        price: formData.price,
+        dimensions: formData.dimensions,
+        colors: formData.colors,
+        image_url: formData.imageUrl || undefined,
+        image_urls: formData.imageUrls,
+        model_url: formData.modelUrl || formData.objUrl || undefined,
+        obj_url: formData.objUrl || undefined,
+        mtl_url: formData.mtlUrl || undefined,
+        status: formData.status,
+      }
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -75,10 +90,11 @@ export function ProductForm({ product, categories }: ProductFormProps) {
 
       router.push("/admin/products")
       router.refresh()
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to save product"
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive",
       })
     } finally {

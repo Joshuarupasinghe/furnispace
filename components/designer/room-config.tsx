@@ -167,7 +167,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
             <div className="flex gap-2">
               <Input
                 type="color"
-                value={config.colorScheme}
+                value={config.colorScheme || '#f5f5f5'}
                 onChange={(e) => setConfig({ ...config, colorScheme: e.target.value })}
                 className="w-20 h-10"
               />
