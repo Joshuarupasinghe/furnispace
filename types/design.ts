@@ -1,18 +1,8 @@
-export type FloorTextureType = 
-  | 'none'
-  | 'wood-oak'
-  | 'wood-walnut'
-  | 'wood-light'
-  | 'tile-marble'
-  | 'tile-ceramic'
-  | 'tile-slate'
+export type FloorTextureType = 'none' | (string & {})
 
 export type WallMaterialType =
   | 'color'
-  | 'panel-wood'
-  | 'panel-white'
-  | 'brick'
-  | 'concrete'
+  | (string & {})
 
 export interface RoomConfig {
   width: number

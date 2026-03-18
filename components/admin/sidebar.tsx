@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Box,
+  Image,
   FolderTree,
   FolderOpen,
   Settings,
@@ -19,6 +20,7 @@ import { useState, useEffect } from "react"
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Products", href: "/admin/products", icon: Box },
+  { name: "Textures", href: "/admin/textures", icon: Image },
   { name: "Categories", href: "/admin/categories", icon: FolderTree },
   { name: "Saved Projects", href: "/admin/projects", icon: FolderOpen },
   { name: "Settings", href: "/admin/settings", icon: Settings },

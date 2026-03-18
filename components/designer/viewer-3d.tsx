@@ -1,9 +1,15 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three"
 import { useDesignStore } from "@/store/design-store"
 import { loadModelFromProductAssets } from "@/lib/model-loader"
+
+interface ApiTexture {
+  id: string
+  type: "floor" | "wall"
+  file_url: string
+}
 
 function getShadedColor(color: string, shading = 0.5): THREE.Color {
   const clamped = Math.max(0, Math.min(1, shading))
@@ -42,6 +48,7 @@ export function Viewer3D() {
   const pendingLoadsRef = useRef<Set<string>>(new Set())
   const animationFrameRef = useRef<number | null>(null)
   const selectionHelperRef = useRef<THREE.BoxHelper | null>(null)
+  const [textures, setTextures] = useState<ApiTexture[]>([])
   
   // Interaction state
   const raycasterRef = useRef(new THREE.Raycaster())
@@ -52,6 +59,40 @@ export function Viewer3D() {
   const intersectionPointRef = useRef(new THREE.Vector3())
 
   const { roomConfig, currentDesign, selectedFurnitureId, selectFurniture, updateFurniture, setLoadingState } = useDesignStore()
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadTextures = async () => {
+      try {
+        const response = await fetch("/api/textures")
+        if (!response.ok) {
+          return
+        }
+
+        const data = (await response.json()) as ApiTexture[]
+        if (mounted) {
+          setTextures(data)
+        }
+      } catch {
+        // Keep legacy texture paths if API is unavailable.
+      }
+    }
+
+    void loadTextures()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const textureMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const texture of textures) {
+      map.set(texture.id, texture.file_url)
+    }
+    return map
+  }, [textures])
 
   useEffect(() => {
     if (!containerRef.current || !roomConfig) return
@@ -151,13 +192,21 @@ export function Viewer3D() {
 
       // Create room (floor and walls)
       const floorGeometry = new THREE.PlaneGeometry(roomConfig.width, roomConfig.length)
+
+      const resolveFloorTextureUrl = (selection: string) => {
+        return textureMap.get(selection) || `/textures/floors/${selection}.jpg`
+      }
+
+      const resolveWallTextureUrl = (selection: string) => {
+        return textureMap.get(selection) || `/textures/walls/${selection}.jpg`
+      }
       
       // Floor material - use texture if specified, otherwise solid color
       let floorMaterial: THREE.MeshStandardMaterial
       
       if (roomConfig.floorTexture && roomConfig.floorTexture !== 'none') {
         const textureLoader = new THREE.TextureLoader()
-        const texturePath = `/textures/floors/${roomConfig.floorTexture}.jpg`
+        const texturePath = resolveFloorTextureUrl(roomConfig.floorTexture)
         const floorTexture = textureLoader.load(texturePath)
         
         // Configure texture tiling based on room size
@@ -187,7 +236,7 @@ export function Viewer3D() {
       
       if (roomConfig.wallMaterial && roomConfig.wallMaterial !== 'color') {
         const textureLoader = new THREE.TextureLoader()
-        const texturePath = `/textures/walls/${roomConfig.wallMaterial}.jpg`
+        const texturePath = resolveWallTextureUrl(roomConfig.wallMaterial)
         const wallTexture = textureLoader.load(texturePath)
         
         wallTexture.wrapS = THREE.RepeatWrapping
@@ -468,7 +517,7 @@ export function Viewer3D() {
         cleanupFn()
       }
     }
-  }, [roomConfig, setLoadingState])
+  }, [roomConfig, setLoadingState, textureMap])
 
   // Load and update furniture items
   useEffect(() => {
@@ -794,7 +843,7 @@ export function Viewer3D() {
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-full min-h-[600px]"
+      className="w-full h-full min-h-150"
       style={{ minHeight: '600px' }}
     />
   )

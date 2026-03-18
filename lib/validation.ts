@@ -52,6 +52,18 @@ export const CreateCategorySchema = z.object({
 
 export const UpdateCategorySchema = CreateCategorySchema.partial()
 
+const TextureTypeSchema = z.enum(["floor", "wall"])
+
+export const CreateTextureSchema = z.object({
+  name: z.string().min(1).max(255),
+  type: TextureTypeSchema,
+  category: z.string().max(100).optional(),
+  file_url: z.string().min(1),
+  preview_url: z.string().min(1).optional(),
+})
+
+export const UpdateTextureSchema = CreateTextureSchema.partial()
+
 export const FileUploadSchema = z.object({
   file: z.instanceof(File),
   folder: z.string().default("uploads"),
@@ -67,6 +79,8 @@ export type CreateProductInput = z.infer<typeof CreateProductSchema>
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>
 export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>
 export type UpdateCategoryInput = z.infer<typeof UpdateCategorySchema>
+export type CreateTextureInput = z.infer<typeof CreateTextureSchema>
+export type UpdateTextureInput = z.infer<typeof UpdateTextureSchema>
 export type FileUploadInput = z.infer<typeof FileUploadSchema>
 export type LoginInput = z.infer<typeof LoginSchema>
 
@@ -84,6 +98,14 @@ export function validateCreateCategory(data: unknown) {
 
 export function validateUpdateCategory(data: unknown) {
   return UpdateCategorySchema.parse(data)
+}
+
+export function validateCreateTexture(data: unknown) {
+  return CreateTextureSchema.parse(data)
+}
+
+export function validateUpdateTexture(data: unknown) {
+  return UpdateTextureSchema.parse(data)
 }
 
 export function validateLoginCredentials(data: unknown) {

@@ -43,6 +43,19 @@ export interface SavedDesign {
   updated_at: string
 }
 
+export type TextureType = "floor" | "wall"
+
+export interface Texture {
+  id: string
+  name: string
+  type: TextureType
+  category?: string
+  file_url: string
+  preview_url?: string
+  created_at: string
+  updated_at: string
+}
+
 type ProductRow = {
   id: string
   name: string
@@ -77,6 +90,17 @@ type DesignRow = {
   updated_at: string
 }
 
+type TextureRow = {
+  id: string
+  name: string
+  type: TextureType
+  category: string | null
+  file_url: string
+  preview_url: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type CreateProductInput = Omit<Product, "id" | "created_at" | "updated_at">
 export type UpdateProductInput = Partial<Omit<Product, "id" | "created_at" | "updated_at">>
 export type CreateCategoryInput = Omit<Category, "id" | "created_at" | "updated_at">
@@ -87,6 +111,8 @@ export type CreateDesignInput = {
   design: InteriorDesign
 }
 export type UpdateDesignInput = Partial<Pick<SavedDesign, "name" | "design">>
+export type CreateTextureInput = Omit<Texture, "id" | "created_at" | "updated_at">
+export type UpdateTextureInput = Partial<Omit<Texture, "id" | "created_at" | "updated_at">>
 
 function formatSupabaseError(action: string, error: PostgrestError): Error {
   const details = [error.message, error.code, error.hint, error.details].filter(Boolean).join(" | ")
@@ -134,6 +160,22 @@ function mapSavedDesign(row: DesignRow): SavedDesign {
     id: row.id,
     name: row.name,
     design: row.design_data,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
+function mapTexture(row: TextureRow): Texture {
+  const fileUrl = resolveAssetUrl(row.file_url)
+  const previewUrl = resolveAssetUrl(row.preview_url)
+
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    category: row.category ?? undefined,
+    file_url: fileUrl ?? row.file_url,
+    preview_url: previewUrl,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
@@ -372,6 +414,82 @@ export async function deleteDesignById(id: string): Promise<boolean> {
 
   if (error) {
     throw formatSupabaseError(`delete design ${id}`, error)
+  }
+
+  return true
+}
+
+export async function getAllTextures(type?: TextureType): Promise<Texture[]> {
+  const client = requireSupabaseAdmin()
+  let query = client.from("textures").select("*").order("created_at", { ascending: false })
+
+  if (type) {
+    query = query.eq("type", type)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw formatSupabaseError("fetch textures", error)
+  }
+
+  return (data ?? []).map((row) => mapTexture(row as TextureRow))
+}
+
+export async function getTextureById(id: string): Promise<Texture | null> {
+  const client = requireSupabaseAdmin()
+  const { data, error } = await client.from("textures").select("*").eq("id", id).maybeSingle()
+
+  if (error) {
+    throw formatSupabaseError(`fetch texture ${id}`, error)
+  }
+
+  return data ? mapTexture(data as TextureRow) : null
+}
+
+export async function createTexture(texture: CreateTextureInput): Promise<Texture> {
+  const client = requireSupabaseAdmin()
+
+  const payload = {
+    id: crypto.randomUUID(),
+    name: texture.name,
+    type: texture.type,
+    category: texture.category ?? null,
+    file_url: texture.file_url,
+    preview_url: texture.preview_url ?? texture.file_url,
+  }
+
+  const { data, error } = await client.from("textures").insert(payload).select("*").single()
+
+  if (error) {
+    throw formatSupabaseError("create texture", error)
+  }
+
+  return mapTexture(data as TextureRow)
+}
+
+export async function updateTexture(id: string, updates: UpdateTextureInput): Promise<Texture | null> {
+  const client = requireSupabaseAdmin()
+
+  const payload: Record<string, unknown> = {
+    ...updates,
+  }
+
+  const { data, error } = await client.from("textures").update(payload).eq("id", id).select("*").maybeSingle()
+
+  if (error) {
+    throw formatSupabaseError(`update texture ${id}`, error)
+  }
+
+  return data ? mapTexture(data as TextureRow) : null
+}
+
+export async function deleteTexture(id: string): Promise<boolean> {
+  const client = requireSupabaseAdmin()
+  const { error } = await client.from("textures").delete().eq("id", id)
+
+  if (error) {
+    throw formatSupabaseError(`delete texture ${id}`, error)
   }
 
   return true

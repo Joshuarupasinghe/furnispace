@@ -14,12 +14,26 @@ import {
   createCategory as dbCreateCategory,
   updateCategory as dbUpdateCategory,
   deleteCategory as dbDeleteCategory,
+  getAllTextures,
+  getTextureById,
+  createTexture as dbCreateTexture,
+  updateTexture as dbUpdateTexture,
+  deleteTexture as dbDeleteTexture,
   type Product,
   type Category,
+  type Texture,
+  type TextureType,
 } from "./db-supabase"
 
 import { deleteFromR2, extractR2ObjectKey, isR2Configured } from "./r2"
-import { validateCreateProduct, validateUpdateProduct, validateCreateCategory, validateUpdateCategory } from "./validation"
+import {
+  validateCreateProduct,
+  validateUpdateProduct,
+  validateCreateCategory,
+  validateUpdateCategory,
+  validateCreateTexture,
+  validateUpdateTexture,
+} from "./validation"
 
 export class ProductService {
   async getAllProducts(): Promise<Product[]> {
@@ -154,9 +168,68 @@ export class CategoryService {
   }
 }
 
+export class TextureService {
+  async getAllTextures(type?: TextureType): Promise<Texture[]> {
+    return getAllTextures(type)
+  }
+
+  async getTextureById(id: string): Promise<Texture | null> {
+    return getTextureById(id)
+  }
+
+  async createTexture(input: unknown): Promise<Texture> {
+    const validated = validateCreateTexture(input)
+    return dbCreateTexture(validated)
+  }
+
+  async updateTexture(id: string, input: unknown): Promise<Texture | null> {
+    const validated = validateUpdateTexture(input)
+    const existing = await getTextureById(id)
+
+    if (!existing) {
+      return null
+    }
+
+    return dbUpdateTexture(id, validated)
+  }
+
+  async deleteTexture(id: string): Promise<boolean> {
+    const texture = await getTextureById(id)
+
+    if (!texture) {
+      return false
+    }
+
+    if (isR2Configured()) {
+      const keys = new Set<string>()
+
+      const textureKey = extractR2ObjectKey(texture.file_url)
+      if (textureKey) {
+        keys.add(textureKey)
+      }
+
+      const previewKey = extractR2ObjectKey(texture.preview_url)
+      if (previewKey) {
+        keys.add(previewKey)
+      }
+
+      for (const key of keys) {
+        try {
+          await deleteFromR2(key)
+        } catch (error) {
+          console.warn(`Failed to delete texture asset from R2: ${key}`, error)
+        }
+      }
+    }
+
+    return dbDeleteTexture(id)
+  }
+}
+
 export class AdminService {
   readonly products = new ProductService()
   readonly categories = new CategoryService()
+  readonly textures = new TextureService()
 
   async getAdminDashboardStats() {
     const products = await this.products.getAllProducts()

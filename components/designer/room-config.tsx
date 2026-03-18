@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,7 +10,20 @@ import { RoomConfig, FloorTextureType, WallMaterialType } from "@/types/design"
 import { useDesignStore } from "@/store/design-store"
 import { useToast } from "@/hooks/use-toast"
 
-const FLOOR_TEXTURES: { value: FloorTextureType; label: string; category: string }[] = [
+interface TextureOption {
+  value: string
+  label: string
+  category?: string
+}
+
+interface ApiTexture {
+  id: string
+  name: string
+  type: "floor" | "wall"
+  category?: string
+}
+
+const LEGACY_FLOOR_TEXTURES: TextureOption[] = [
   { value: 'none', label: 'Solid Color', category: 'Basic' },
   { value: 'wood-oak', label: 'Oak Wood', category: 'Wood' },
   { value: 'wood-walnut', label: 'Walnut Wood', category: 'Wood' },
@@ -20,7 +33,7 @@ const FLOOR_TEXTURES: { value: FloorTextureType; label: string; category: string
   { value: 'tile-slate', label: 'Slate', category: 'Tile' },
 ]
 
-const WALL_MATERIALS: { value: WallMaterialType; label: string }[] = [
+const LEGACY_WALL_TEXTURES: TextureOption[] = [
   { value: 'color', label: 'Solid Color' },
   { value: 'panel-wood', label: 'Wood Panels' },
   { value: 'panel-white', label: 'White Panels' },
@@ -35,6 +48,8 @@ interface RoomConfigProps {
 export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
   const { setRoomConfig } = useDesignStore()
   const { toast } = useToast()
+  const [floorTextureOptions, setFloorTextureOptions] = useState<TextureOption[]>(LEGACY_FLOOR_TEXTURES)
+  const [wallTextureOptions, setWallTextureOptions] = useState<TextureOption[]>(LEGACY_WALL_TEXTURES)
   const [config, setConfig] = useState<RoomConfig>({
     width: 5,
     length: 4,
@@ -45,6 +60,88 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
     wallMaterial: "color",
     wallColor: "#eeeeee",
   })
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadTextures = async () => {
+      try {
+        const response = await fetch("/api/textures")
+        if (!response.ok) {
+          return
+        }
+
+        const textures = (await response.json()) as ApiTexture[]
+        if (!mounted) {
+          return
+        }
+
+        const floorOptions: TextureOption[] = [{ value: "none", label: "Solid Color", category: "Basic" }]
+        const wallOptions: TextureOption[] = [{ value: "color", label: "Solid Color" }]
+
+        for (const texture of textures) {
+          const option: TextureOption = {
+            value: texture.id,
+            label: texture.name,
+            category: texture.category,
+          }
+
+          if (texture.type === "floor") {
+            floorOptions.push(option)
+          } else {
+            wallOptions.push(option)
+          }
+        }
+
+        if (floorOptions.length > 1) {
+          setFloorTextureOptions(floorOptions)
+        }
+        if (wallOptions.length > 1) {
+          setWallTextureOptions(wallOptions)
+        }
+      } catch {
+        // Keep legacy defaults if texture fetch fails.
+      }
+    }
+
+    void loadTextures()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const resolvedFloorOptions = useMemo(() => {
+    const exists = floorTextureOptions.some((texture) => texture.value === config.floorTexture)
+    if (!config.floorTexture || exists) {
+      return floorTextureOptions
+    }
+
+    return [
+      ...floorTextureOptions,
+      {
+        value: config.floorTexture,
+        label: "Current texture",
+        category: "Saved",
+      },
+    ]
+  }, [config.floorTexture, floorTextureOptions])
+
+  const resolvedWallOptions = useMemo(() => {
+    const exists = wallTextureOptions.some((texture) => texture.value === config.wallMaterial)
+    if (!config.wallMaterial || exists) {
+      return wallTextureOptions
+    }
+
+    return [
+      ...wallTextureOptions,
+      {
+        value: config.wallMaterial,
+        label: "Current texture",
+        category: "Saved",
+      },
+    ]
+  }, [config.wallMaterial, wallTextureOptions])
 
   const handleSubmit = () => {
     // Validate room configuration
@@ -152,7 +249,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {FLOOR_TEXTURES.map((texture) => (
+              {resolvedFloorOptions.map((texture) => (
                 <SelectItem key={texture.value} value={texture.value}>
                   {texture.label}
                 </SelectItem>
@@ -185,7 +282,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
         )}
 
         <div className="space-y-2">
-          <Label>Wall Material</Label>
+          <Label>Wall Texture</Label>
           <Select
             value={config.wallMaterial || 'color'}
             onValueChange={(value: WallMaterialType) =>
@@ -196,7 +293,7 @@ export function RoomConfigPanel({ onComplete }: RoomConfigProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {WALL_MATERIALS.map((material) => (
+              {resolvedWallOptions.map((material) => (
                 <SelectItem key={material.value} value={material.value}>
                   {material.label}
                 </SelectItem>

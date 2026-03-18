@@ -141,7 +141,6 @@ export function ModelViewer({
         } else {
           // Use furniture-specific fallback if available
           if (furnitureType && dimensions) {
-            setUseFallback(true)
             setIsLoaded(true)
           } else {
             setHasError(true)
