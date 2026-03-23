@@ -1,92 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FurniSpace
 
-## Getting Started
+FurniSpace is a 3D furniture visualisation and e-commerce platform built with Next.js, allowing users to explore and place furniture models in an interactive 3D space. 
+This project is created by the students of Group 115 of Plymouth Batch 12 for the PUSL3122 Module.
+Navigate to /admin to access admin page
+Admin credentials are as follows
+ADMIN_EMAIL=admin@furnispace.com
+ADMIN_PASSWORD=admin123
+---
 
-First, run the development server:
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js** v18 or later
+- **pnpm** (recommended)
+
+### Environment Variables
+
+Create a `.env.local` file in the root directory and configure the following environment variables (see `.env.example` for reference):
+
+```env.local
+STRIPE_SECRET_KEY=sk_test_51SdPE3DjcKeoJZecLWFXpSevzs0qsdyiRCasyVEGC1SXGCia87k4KH05vHJBcMnrMk1VqZnVthDrQea5mABdzZKA00SNbIcfcS
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51SdPE3DjcKeoJZeceB0qJSBQIELpk9f8Rba82xqUKyQ6YONL9vjK3iJ527WmrV1MYKMdEgxbP3Wh3xF3vdSYlW6g00lD4rghrU
+STRIPE_WEBHOOK_SECRET=whsec_9ce2f6993b366c5fa711721107fb5ebfb2145c1ecc6873fb071f7cad152a4c10
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://riowphxjecfatehsjrzt.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_i8tdr4YAE6tyxatT-2gxMA_EE1yhNeU
+
+SUPABASE_SECRET_KEY=sb_secret_l8UoOdhmU-6GRKWgFeVVLw_oAHylR81
+
+ADMIN_EMAIL=admin@furnispace.com
+ADMIN_PASSWORD=admin123
+
+# Cloudflare R2 Configuration
+R2_ACCOUNT_ID=983ec065600c45ed776ccf5b514d0bd7
+R2_ACCESS_KEY_ID=f2861cfcd27d300747ef263830788d49
+R2_SECRET_ACCESS_KEY=ebb9e8afc33254493daf42cc5d6395af68db621bff5d068b0a6c85dc327cae1f
+R2_BUCKET_NAME=furnispace
+R2_PUBLIC_URL=https://furnispace.r2.dev
+R2_ENDPOINT=https://983ec065600c45ed776ccf5b514d0bd7.r2.cloudflarestorage.com
+
+# Session Secret (generate a random string)
+SESSION_SECRET=6oNrYv3Pp5rhyhOxhllaVl2o4UfTdGG-ttjqSNdP
+```
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Clone the repository
+git clone https://github.com/Joshuarupasinghe/furnispace.git
+cd furnispace
+
+# Install dependencies
+pnpm install
+```
+
+### Running the Development Server
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your browser and navigate to:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- [http://localhost:3000](http://localhost:3000)
+- [http://localhost:3006](http://localhost:3006)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> **Note:** The application is configured to run on **port 3000** or **port 3006**, as Cloudflare tunnelling has been enabled for those ports.
 
-## Cloudflare R2 Asset Architecture
+---
 
-Product assets are stored in Cloudflare R2 and referenced from the `products` table:
-
-- `image_url` and `image_urls` for product imagery
-- `obj_url` and `mtl_url` for OBJ/MTL assets
-- `model_url` for GLB/GLTF or fallback model URL
-
-### 1) Configure Environment Variables
-
-Use `.env.example` as a template and create `.env.local`:
+## 🏗️ Building for Production
 
 ```bash
-cp .env.example .env.local
+pnpm build
+pnpm start
 ```
 
-Required R2 variables:
+---
 
-- `R2_BUCKET_NAME`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_ENDPOINT` (or `R2_ACCOUNT_ID`)
-- `R2_PUBLIC_URL` (recommended custom/public bucket domain)
+## 📁 Project Structure
 
-### 2) Configure Bucket CORS (Required for OBJ/MTL in browser)
-
-Set CORS on your R2 bucket so web clients can fetch model assets:
-
-```json
-[
-	{
-		"AllowedOrigins": ["http://localhost:3000", "https://your-domain.com"],
-		"AllowedMethods": ["GET", "HEAD"],
-		"AllowedHeaders": ["*"],
-		"ExposeHeaders": ["ETag", "Content-Length"],
-		"MaxAgeSeconds": 86400
-	}
-]
+```
+furnispace/
+├── app/            # Next.js App Router pages & API routes
+├── components/     # Reusable UI components
+├── public/         # Static assets
+└── ...
 ```
 
-If uploading directly from browser in the future, include `PUT`/`POST` as needed.
+---
 
-### 3) Upload Flow
+## 📦 Credits
 
-- Admin UI uploads images and model files via `POST /api/admin/upload`.
-- Files are stored under R2 prefixes:
-	- `products/images`
-	- `products/models`
-- APIs persist public asset URLs in Supabase.
+### 3D Textures — Floor Textures
+**[ambientCG](https://ambientcg.com/)**  
+Floor textures used in the 3D viewer were sourced from ambientCG. All assets are released under the **Creative Commons CC0 1.0 Universal** licence.
 
-### 4) Retrieval Flow
+---
 
-- Product APIs return normalized asset URLs.
-- Frontend (`shop`, `product detail`, and viewer components) uses these URLs directly.
-- `next.config.ts` allows remote image hosts including your R2 public domain.
+### 3D Models — Furniture
+**[CGTrader](https://www.cgtrader.com/)**  
+Furniture 3D models used throughout the application were sourced from CGTrader.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+### Textures — Walls & Floors
+**[Freepik](https://www.freepik.com/)**  
+Wall textures and additional floor textures were sourced from Freepik.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📄 Licence
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is for academic and demonstration purposes.
